@@ -1,4 +1,3 @@
-// Full updated LoadDistributionPlanner component with enhancements
 import { useState } from "react";
 import jsPDF from "jspdf";
 
@@ -112,7 +111,13 @@ export default function LoadDistributionPlanner() {
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "1rem" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>Load Distribution Planner</h1>
+      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>
+        Load Distribution Planner
+      </h1>
+      <p style={{ fontSize: "14px", marginBottom: "1rem" }}>
+        <strong>Walkthrough:</strong> 1) Enter your total load in MW. 2) Select lineups and PDUs. 3)
+        Optionally pick subfeeds. 4) Click <strong>Auto Distribute</strong> to spread load evenly.
+      </p>
 
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
         <div>
@@ -121,9 +126,14 @@ export default function LoadDistributionPlanner() {
             type="number"
             value={targetLoadMW}
             onChange={(e) => setTargetLoadMW(Number(e.target.value))}
+            title="Enter your desired total load in megawatts"
           />
         </div>
-        <button onClick={autoDistribute} disabled={totalPDUs === 0}>
+        <button
+          onClick={autoDistribute}
+          disabled={totalPDUs === 0}
+          title="Distribute load evenly across PDUs"
+        >
           Auto Distribute
         </button>
         <button
@@ -133,6 +143,7 @@ export default function LoadDistributionPlanner() {
             setPduUsage({});
             setSelectedLineups([]);
           }}
+          title="Reset all selections"
         >
           Clear All
         </button>
@@ -156,19 +167,12 @@ export default function LoadDistributionPlanner() {
                   type="checkbox"
                   checked={selectedLineups.includes(lineup)}
                   onChange={() => toggleLineup(lineup)}
+                  title="Include or exclude this lineup"
                 />
                 {lineup} {lineupWarnings[lineup] && <span style={{ color: "red" }}>⚠️</span>}
               </label>
               {selectedLineups.includes(lineup) && (
-                <div
-                  style={{
-                    fontSize: "12px",
-                    marginTop: "0.5rem",
-                    display: "flex",
-                    gap: "0.5rem",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div style={{ fontSize: "12px", marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                   {[0, 1].map((i) => (
                     <label key={`${lineup}-${i}`}>
                       <input
@@ -191,125 +195,11 @@ export default function LoadDistributionPlanner() {
         <p>Required Even Load per PDU: <strong>{evenLoadPerPDU.toFixed(2)} kW</strong></p>
         <p>Max Capacity per Selected PDU: <strong>{pduMaxKW.toFixed(2)} kW</strong></p>
         <p>Total Available System Capacity: <strong>{totalAvailableCapacityMW} MW</strong></p>
+        <p>Total Custom Load: <strong>{totalCustomKW.toFixed(2)} kW</strong></p>
+        <p style={{ color: totalCustomKW > targetLoadMW * 1000 ? "red" : "green" }}>
+          {totalCustomKW > targetLoadMW * 1000 ? "Exceeds Target Load" : "Within Target Load"}
+        </p>
       </div>
-
-      {selectedLineups.map((lineup, li) => (
-        <div
-          key={lineup}
-          style={{
-            borderTop: "1px solid #ccc",
-            paddingTop: "1rem",
-            marginTop: "1rem",
-          }}
-        >
-          <h3>Lineup {lineup}</h3>
-          {(pduUsage[lineup] || [0, 1]).map((pdu, pj) => {
-            const index = selectedLineups
-              .slice(0, li)
-              .reduce((acc, l) => acc + (pduUsage[l]?.length || 2), 0) + pj;
-            const pduKey = `${lineup}-${pdu + 1}`;
-            const load = customDistribution[index] || 0;
-            const selectedFeeds = Array.from({ length: subfeedsPerPDU }).filter(
-              (_, i) => breakerSelection[`${pduKey}-S${i}`]
-            );
-
-            return (
-              <div
-                key={pduKey}
-                style={{
-                  marginBottom: "1.5rem",
-                  padding: "1rem",
-                  backgroundColor: "#f9f9f9",
-                  borderRadius: "8px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                <div style={{ marginBottom: "0.5rem" }}>
-                  <strong>{pduKey}</strong> — Load (kW):
-                  <input
-                    type="number"
-                    value={load}
-                    onChange={(e) => handleCustomChange(index, e.target.value)}
-                    style={{ marginLeft: "0.5rem", width: "100px" }}
-                  />
-                  <span
-                    style={{
-                      color: load > pduMaxKW ? "red" : "green",
-                      marginLeft: "1rem",
-                    }}
-                  >
-                    {load > pduMaxKW
-                      ? `Overloaded (>${pduMaxKW.toFixed(2)} kW)`
-                      : `OK (<${pduMaxKW.toFixed(2)} kW)`}
-                  </span>
-                </div>
-                <div style={{ marginTop: "0.5rem" }}>
-                  <label style={{ fontWeight: "bold" }}>Subfeeds:</label>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    {Array.from({ length: subfeedsPerPDU }).map((_, i) => {
-                      const key = `${pduKey}-S${i}`;
-                      const isSelected = !!breakerSelection[key];
-                      const feedLoad =
-                        isSelected && selectedFeeds.length > 0
-                          ? (load / selectedFeeds.length).toFixed(2)
-                          : "";
-                      const overLimit =
-                        isSelected &&
-                        selectedFeeds.length > 0 &&
-                        parseFloat(feedLoad) > maxSubfeedKW;
-                      const feedStatus = isSelected
-                        ? `${feedLoad} kW${overLimit ? " ⚠️" : ""}`
-                        : "";
-                      return (
-                        <label
-                          key={key}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSubfeed(pduKey, i)}
-                          />
-                          S{i + 1}
-                          <span
-                            style={{
-                              fontSize: "10px",
-                              color: overLimit ? "red" : "#666",
-                            }}
-                          >
-                            {feedStatus}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
-
-      <p>Total Custom Load: <strong>{totalCustomKW.toFixed(2)} kW</strong></p>
-      <p
-        style={{
-          color: totalCustomKW > targetLoadMW * 1000 ? "red" : "green",
-        }}
-      >
-        {totalCustomKW > targetLoadMW * 1000
-          ? "Exceeds Target Load"
-          : "Within Target Load"}
-      </p>
     </div>
   );
 }
