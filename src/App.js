@@ -1,4 +1,3 @@
-// Full updated LoadDistributionPlanner component with full UI and walkthrough
 import { useState } from "react";
 
 export default function LoadDistributionPlanner() {
@@ -111,10 +110,21 @@ export default function LoadDistributionPlanner() {
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "1rem" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>Load Distribution Planner</h1>
+      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>
+        Load Distribution Planner
+      </h1>
       <p style={{ fontSize: "14px", marginBottom: "1rem" }}>
-        <strong>Walkthrough:</strong> 1) Enter your total load in MW. 2) Select lineups and PDUs. 3)
-        Optionally pick subfeeds. 4) Click <strong>Auto Distribute</strong> to spread load evenly.
+        <strong>Walkthrough:</strong> Use this tool to plan and distribute electrical load across your PDUs and subfeeds.
+        <br />
+        <strong>Step 1:</strong> Enter the total load in MW you need to distribute.
+        <br />
+        <strong>Step 2:</strong> Select the lineups you want to include in the distribution.
+        <br />
+        <strong>Step 3:</strong> For each lineup, choose the PDUs (e.g., A01-1, A01-2) you wish to use.
+        <br />
+        <strong>Step 4 (Optional):</strong> Select individual subfeed breakers for each PDU if you want to see per-subfeed load breakdown.
+        <br />
+        <strong>Step 5:</strong> Click <strong>Auto Distribute</strong> to apply the load evenly, respecting breaker and lineup limits.
       </p>
 
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
@@ -126,7 +136,9 @@ export default function LoadDistributionPlanner() {
             onChange={(e) => setTargetLoadMW(Number(e.target.value))}
           />
         </div>
-        <button onClick={autoDistribute} disabled={totalPDUs === 0}>Auto Distribute</button>
+        <button onClick={autoDistribute} disabled={totalPDUs === 0}>
+          Auto Distribute
+        </button>
         <button
           onClick={() => {
             setCustomDistribution([]);
@@ -134,7 +146,9 @@ export default function LoadDistributionPlanner() {
             setPduUsage({});
             setSelectedLineups([]);
           }}
-        >Clear All</button>
+        >
+          Clear All
+        </button>
       </div>
 
       <div>
@@ -222,18 +236,35 @@ export default function LoadDistributionPlanner() {
                     {Array.from({ length: subfeedsPerPDU }).map((_, i) => {
                       const key = `${pduKey}-S${i}`;
                       const isSelected = !!breakerSelection[key];
-                      const feedLoad = isSelected && selectedFeeds.length > 0 ? (load / selectedFeeds.length).toFixed(2) : "";
-                      const overLimit = isSelected && selectedFeeds.length > 0 && parseFloat(feedLoad) > maxSubfeedKW;
-                      const feedStatus = isSelected ? `${feedLoad} kW${overLimit ? ' ⚠️' : ''}` : '';
+                      const feedLoad = isSelected && selectedFeeds.length > 0
+                        ? (load / selectedFeeds.length).toFixed(2)
+                        : "";
+                      const overLimit =
+                        isSelected &&
+                        selectedFeeds.length > 0 &&
+                        parseFloat(feedLoad) > maxSubfeedKW;
+                      const feedStatus = isSelected ? `${feedLoad} kW${overLimit ? " ⚠️" : ""}` : "";
                       return (
-                        <label key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <label
+                          key={key}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                          }}
+                        >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSubfeed(pduKey, i)}
                           />
                           S{i + 1}
-                          <span style={{ fontSize: "10px", color: overLimit ? "red" : "#666" }}>
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              color: overLimit ? "red" : "#666",
+                            }}
+                          >
                             {feedStatus}
                           </span>
                         </label>
