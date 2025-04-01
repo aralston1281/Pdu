@@ -13,18 +13,18 @@ export default function LoadDistributionPlanner() {
   const lineupNames = ["A01", "A02", "B01", "B02", "C01", "C02", "D01", "D02", "E01", "E02"];
   const pduPerLineup = 2;
   const subfeedsPerPDU = 8;
-  const subfeedBreakerAmps = 800;
+  const subfeedBreakerAmps = 600;
   const subfeedVoltage = 415;
   const powerFactor = 1.0;
   const maxSubfeedKW = (Math.sqrt(3) * subfeedVoltage * subfeedBreakerAmps * powerFactor) / 1000;
-  const pduMainBreakerAmps = 1000;
+  const pduMainBreakerAmps = 996;
   const pduVoltage = 480;
   const pduMaxKW = (Math.sqrt(3) * pduVoltage * pduMainBreakerAmps * powerFactor * 0.8) / 1000;
   const maxLineupKW = (Math.sqrt(3) * pduVoltage * pduMainBreakerAmps * powerFactor * 0.8) / 1000;
 
   const totalPDUs = selectedLineups.reduce((acc, lineup) => acc + (pduUsage[lineup]?.length || 2), 0);
   const evenLoadPerPDU = (targetLoadMW * 1000) / totalPDUs;
-  const totalAvailableCapacityMW = (selectedLineups.length * maxLineupKW / 1000).toFixed(2); // Based on 1000A breaker per lineup
+  const totalAvailableCapacityMW = (selectedLineups.length * maxLineupKW / 1000).toFixed(2);
   const totalCustomKW = parseFloat(customDistribution.reduce((acc, val) => acc + (val || 0), 0).toFixed(2));
 
   const handleCustomChange = (index, value) => {
@@ -163,19 +163,28 @@ export default function LoadDistributionPlanner() {
             const selectedFeeds = Array.from({ length: subfeedsPerPDU }).filter((_, i) => breakerSelection[`${pduKey}-S${i}`]);
 
             return (
-              <div key={pduKey}>
-                <label>{pduKey} Load (kW)</label>
-                <input type="number" value={load} onChange={(e) => handleCustomChange(index, e.target.value)} />
-                <span style={{ color: load > pduMaxKW ? "red" : "green" }}>
-                  {load > pduMaxKW ? "Overloaded" : "OK"}
-                </span>
-                <div>
-                  <label>Subfeeds:</label>
+              <div key={pduKey} style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong>{pduKey}</strong> — Load (kW):
+                  <input
+                    type="number"
+                    value={load}
+                    onChange={(e) => handleCustomChange(index, e.target.value)}
+                    style={{ marginLeft: '0.5rem', width: '100px' }}
+                  />
+                  <span style={{ color: load > pduMaxKW ? "red" : "green", marginLeft: '1rem' }}>
+                    {load > pduMaxKW ? `Overloaded (>${pduMaxKW.toFixed(2)} kW)` : `OK (<${pduMaxKW.toFixed(2)} kW)`}
+                  </span>
+                </div>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <label style={{ fontWeight: 'bold' }}>Subfeeds:</label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                     {Array.from({ length: subfeedsPerPDU }).map((_, i) => {
                       const key = `${pduKey}-S${i}`;
                       const isSelected = !!breakerSelection[key];
-                      const feedLoad = isSelected ? (load / selectedFeeds.length).toFixed(2) : "";
+                      const feedLoad = isSelected && selectedFeeds.length > 0 ? (load / selectedFeeds.length).toFixed(2) : "";
+                      const overLimit = isSelected && selectedFeeds.length > 0 && parseFloat(feedLoad) > maxSubfeedKW;
+const feedStatus = isSelected ? `${feedLoad} kW${overLimit ? ' ⚠️' : ''}` : '';
                       return (
                         <label key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                           <input
@@ -184,7 +193,9 @@ export default function LoadDistributionPlanner() {
                             onChange={() => toggleSubfeed(pduKey, i)}
                           />
                           S{i + 1}
-                          <span style={{ fontSize: "10px", color: "#666" }}>{isSelected && feedLoad + " kW"}</span>
+                          <span style={{ fontSize: "10px", color: overLimit ? "red" : "#666" }}>
+                            {feedStatus}
+                          </span>
                         </label>
                       );
                     })}
