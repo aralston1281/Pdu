@@ -63,33 +63,29 @@ export default function LoadDistributionPlanner() {
   const renderPduCheckbox = (lineup, pduIndex) => {
     const pduName = `${lineup}-${pduIndex + 1}`;
     return (
-      <label key={pduName} className="text-sm font-medium flex items-center gap-1">
+      <label key={pduName} style={{ marginRight: "1rem" }}>
         <input
           type="checkbox"
           checked={(pduUsage[lineup] || [0, 1]).includes(pduIndex)}
           onChange={() => togglePdu(lineup, pduIndex)}
-          className="accent-blue-600"
-        />
-        {pduName}
+        /> {pduName}
       </label>
     );
   };
 
   const renderSubfeedSelector = (pduIndex) => (
-    <div className="ml-36 mt-1 text-xs">
-      <label className="block mb-1">Subfeeds:</label>
-      <div className="flex flex-wrap gap-2">
+    <div style={{ marginLeft: "150px", marginTop: "4px" }}>
+      <label style={{ fontSize: "12px" }}>Subfeeds:</label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", fontSize: "12px" }}>
         {Array.from({ length: subfeedsPerPDU }).map((_, i) => {
           const key = `${pduIndex}-${i}`;
           return (
-            <label key={key} className="flex items-center gap-1">
+            <label key={key}>
               <input
                 type="checkbox"
                 checked={!!breakerSelection[key]}
                 onChange={() => toggleSubfeed(pduIndex, i)}
-                className="accent-blue-600"
-              />
-              S{i + 1}
+              /> S{i + 1}
             </label>
           );
         })}
@@ -97,7 +93,36 @@ export default function LoadDistributionPlanner() {
     </div>
   );
 
-  const autoDistribute = () => { /* unchanged */ };
+  const autoDistribute = () => {
+  const pduList = selectedLineups.flatMap(lineup => (pduUsage[lineup] || [0, 1]).map(pdu => `${lineup}-${pdu + 1}`));
+  const distributed = Array(pduList.length).fill(0);
+  let remainingLoad = targetLoadMW * 1000;
+
+  const pduCapacities = pduList.map((_, i) => {
+    let activeFeeds = 0;
+    for (let j = 0; j < subfeedsPerPDU; j++) {
+      if (breakerSelection[`${i}-${j}`]) activeFeeds++;
+    }
+    return activeFeeds > 0 ? activeFeeds * maxSubfeedKW : subfeedsPerPDU * maxSubfeedKW;
+  });
+
+  while (remainingLoad > 0) {
+    let anyAllocated = false;
+    for (let i = 0; i < distributed.length; i++) {
+      if (distributed[i] < pduCapacities[i]) {
+        const available = pduCapacities[i] - distributed[i];
+        const toAssign = Math.min(available, remainingLoad, 10);
+        distributed[i] += toAssign;
+        remainingLoad -= toAssign;
+        anyAllocated = true;
+        if (remainingLoad <= 0) break;
+      }
+    }
+    if (!anyAllocated) break;
+  }
+
+  setCustomDistribution(distributed);
+};
   const exportCSV = () => { /* unchanged */ };
   const exportPDF = () => { /* unchanged */ };
 
@@ -105,35 +130,36 @@ export default function LoadDistributionPlanner() {
   const overCapacityFlags = customDistribution.map((val) => val > pduMaxKW);
 
   return (
-    <div className="max-w-5xl mx-auto p-4 text-sm">
-      <h1 className="text-2xl font-bold mb-4">Load Distribution Planner</h1>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "1rem" }}>
+      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>
+        Load Distribution Planner
+      </h1>
 
-      <div className="flex flex-wrap gap-4 mb-4">
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
         <div>
-          <label className="block font-medium mb-1">Target Load (MW)</label>
+          <label>Target Load (MW)</label>
           <input
             type="number"
             value={targetLoadMW}
             onChange={(e) => setTargetLoadMW(Number(e.target.value))}
-            className="border rounded px-2 py-1 w-24"
           />
         </div>
-        <div className="flex-1">
-          <label className="block font-medium mb-1">Lineups to Use</label>
-          <div className="flex flex-wrap gap-4">
+        <div>
+          <label>Lineups to Use</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
             {lineupNames.map(lineup => (
-              <div key={lineup} className="border rounded p-3 w-40 shadow-sm">
-                <label className="font-semibold block mb-2">
+              <div key={lineup} style={{ border: "1px solid #ccc", padding: "0.5rem", borderRadius: "8px", minWidth: "140px" }}>
+                <label style={{ fontWeight: "bold" }}>
                   <input
                     type="checkbox"
                     checked={selectedLineups.includes(lineup)}
                     onChange={() => toggleLineup(lineup)}
-                    className="mr-1 accent-blue-600"
+                    style={{ marginRight: "6px" }}
                   />
                   {lineup}
                 </label>
                 {selectedLineups.includes(lineup) && (
-                  <div className="flex gap-2 flex-wrap">
+                  <div style={{ fontSize: "12px", marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                     {[0, 1].map(i => renderPduCheckbox(lineup, i))}
                   </div>
                 )}
@@ -143,52 +169,50 @@ export default function LoadDistributionPlanner() {
         </div>
       </div>
 
-      <div className="mb-4 space-y-1">
+      <div style={{ marginBottom: "1rem" }}>
         <p>Total PDUs in use: <strong>{totalPDUs}</strong></p>
         <p>Required Even Load per PDU: <strong>{evenLoadPerPDU.toFixed(2)} kW</strong></p>
         <p>Max Capacity per Selected PDU (Main Breaker 80%): <strong>{pduMaxKW.toFixed(2)} kW</strong></p>
         <p>Total Available System Capacity (based on selected PDUs): <strong>{(pduMaxKW * totalPDUs / 1000).toFixed(2)} MW</strong></p>
       </div>
 
-      <div className="flex gap-4 mb-6">
-        <button onClick={autoDistribute} className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">Auto Distribute</button>
-        <button onClick={exportCSV} className="border border-gray-400 px-4 py-1 rounded hover:bg-gray-100">Export CSV</button>
-        <button onClick={exportPDF} className="border border-gray-400 px-4 py-1 rounded hover:bg-gray-100">Export PDF</button>
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+        <button onClick={autoDistribute}>Auto Distribute</button>
+        <button onClick={exportCSV}>Export CSV</button>
+        <button onClick={exportPDF}>Export PDF</button>
       </div>
 
       {selectedLineups.map((lineup, lineupIndex) => (
-        <div key={lineup} className="border-t pt-4 mb-6">
-          <h3 className="font-bold mb-2 text-base">Lineup {lineup}</h3>
-          {(pduUsage[lineup] || [0, 1]).map((pdu, j) => {
-            const index = selectedLineups
-              .slice(0, lineupIndex)
-              .reduce((acc, l) => acc + (pduUsage[l]?.length || 2), 0) + j;
-            const pduLabel = `${lineup}-${pdu + 1}`;
-            return (
-              <div key={pduLabel} className="flex flex-col mb-4">
-                <div className="flex items-center gap-4">
-                  <label className="w-36 font-medium">{pduLabel} Load (kW)</label>
-                  <input
-                    type="number"
-                    value={customDistribution[index] || 0}
-                    onChange={(e) => handleCustomChange(index, e.target.value)}
-                    className="border rounded px-2 py-1 w-24"
-                  />
-                  <span className={overCapacityFlags[index] ? "text-red-600" : "text-green-600"}>
-                    {overCapacityFlags[index] ? "Overloaded" : "OK"}
-                  </span>
-                </div>
-                {renderSubfeedSelector(index)}
-              </div>
-            );
-          })}
+  <div key={lineup} style={{ borderTop: "1px solid #ccc", paddingTop: "1rem", marginBottom: "1rem" }}>
+    <h3 style={{ fontWeight: "bold" }}>Lineup {lineup}</h3>
+    {(pduUsage[lineup] || [0, 1]).map((pdu, j) => {
+      const index = selectedLineups
+        .slice(0, lineupIndex)
+        .reduce((acc, l) => acc + (pduUsage[l]?.length || 2), 0) + j;
+      const pduLabel = `${lineup}-${pdu + 1}`;
+      return (
+        <div key={pduLabel} style={{ display: "flex", flexDirection: "column", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <label style={{ width: "150px" }}>{pduLabel} Load (kW)</label>
+            <input
+              type="number"
+              value={customDistribution[index] || 0}
+              onChange={(e) => handleCustomChange(index, e.target.value)}
+            />
+            <span style={{ color: overCapacityFlags[index] ? "red" : "green" }}>
+              {overCapacityFlags[index] ? "Overloaded" : "OK"}
+            </span>
+          </div>
+          {renderSubfeedSelector(index)}
         </div>
-      ))}
-
-      <p className="mt-4 text-base">Total Custom Load: <strong>{totalCustomKW.toFixed(2)} kW</strong></p>
-      <p className={totalCustomKW > targetLoadMW * 1000 ? "text-red-600" : "text-green-600"}>
-        {totalCustomKW > targetLoadMW * 1000 ? "Exceeds Target Load" : "Within Target Load"}
-      </p>
+      );
+    })}
+  </div>
+))}
+<p>Total Custom Load: <strong>{totalCustomKW.toFixed(2)} kW</strong></p>
+<p style={{ color: totalCustomKW > targetLoadMW * 1000 ? "red" : "green" }}>
+  {totalCustomKW > targetLoadMW * 1000 ? "Exceeds Target Load" : "Within Target Load"}
+</p>
     </div>
   );
 }
