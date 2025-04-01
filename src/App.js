@@ -158,21 +158,36 @@ export default function LoadDistributionPlanner() {
           {(pduUsage[lineup] || [0, 1]).map((pdu, pj) => {
             const index = selectedLineups.slice(0, li).reduce((acc, l) => acc + (pduUsage[l]?.length || 2), 0) + pj;
             const pduKey = `${lineup}-${pdu + 1}`;
+            const load = customDistribution[index] || 0;
+
+            const selectedFeeds = Array.from({ length: subfeedsPerPDU }).filter((_, i) => breakerSelection[`${pduKey}-S${i}`]);
+
             return (
               <div key={pduKey}>
                 <label>{pduKey} Load (kW)</label>
-                <input type="number" value={customDistribution[index] || 0} onChange={(e) => handleCustomChange(index, e.target.value)} />
-                <span style={{ color: (customDistribution[index] || 0) > pduMaxKW ? "red" : "green" }}>
-                  {(customDistribution[index] || 0) > pduMaxKW ? "Overloaded" : "OK"}
+                <input type="number" value={load} onChange={(e) => handleCustomChange(index, e.target.value)} />
+                <span style={{ color: load > pduMaxKW ? "red" : "green" }}>
+                  {load > pduMaxKW ? "Overloaded" : "OK"}
                 </span>
                 <div>
                   <label>Subfeeds:</label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                    {Array.from({ length: subfeedsPerPDU }).map((_, i) => (
-                      <label key={`${pduKey}-S${i}`}>
-                        <input type="checkbox" checked={!!breakerSelection[`${pduKey}-S${i}`]} onChange={() => toggleSubfeed(pduKey, i)} /> S{i + 1}
-                      </label>
-                    ))}
+                    {Array.from({ length: subfeedsPerPDU }).map((_, i) => {
+                      const key = `${pduKey}-S${i}`;
+                      const isSelected = !!breakerSelection[key];
+                      const feedLoad = isSelected ? (load / selectedFeeds.length).toFixed(2) : "";
+                      return (
+                        <label key={key} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSubfeed(pduKey, i)}
+                          />
+                          S{i + 1}
+                          <span style={{ fontSize: "10px", color: "#666" }}>{isSelected && feedLoad + " kW"}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
