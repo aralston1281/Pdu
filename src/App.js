@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
 
 export default function LoadDistributionPlanner() {
@@ -15,7 +12,6 @@ export default function LoadDistributionPlanner() {
   const subfeedVoltage = 415;
   const powerFactor = 1.0;
   const maxSubfeedKW = (Math.sqrt(3) * subfeedVoltage * subfeedBreakerAmps * powerFactor) / 1000;
-  // Override PDU max capacity using main breaker (1000A) at 480V, 80% rule
   const pduMainBreakerAmps = 1000;
   const pduVoltage = 480;
   const pduMaxKW = (Math.sqrt(3) * pduVoltage * pduMainBreakerAmps * powerFactor * 0.8) / 1000;
@@ -71,84 +67,75 @@ export default function LoadDistributionPlanner() {
   const overCapacityFlags = customDistribution.map((val) => val > pduMaxKW);
 
   return (
-    <div className="max-w-5xl mx-auto grid gap-6 p-6">
-      <h1 className="text-2xl font-bold">Load Distribution Planner</h1>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "1rem" }}>
+      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "1rem" }}>
+        Load Distribution Planner
+      </h1>
 
-      <Card>
-        <CardContent className="grid grid-cols-2 gap-4 p-4">
-          <div>
-            <label className="font-semibold">Target Load (MW)</label>
-            <Input
-              type="number"
-              value={targetLoadMW}
-              onChange={(e) => setTargetLoadMW(Number(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="font-semibold"># of Lineups to Use</label>
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={activeLineups}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                setActiveLineups(n);
-                setCustomDistribution(Array(n * pduPerLineup).fill(0));
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+        <div>
+          <label>Target Load (MW)</label>
+          <input
+            type="number"
+            value={targetLoadMW}
+            onChange={(e) => setTargetLoadMW(Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <label># of Lineups to Use</label>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={activeLineups}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              setActiveLineups(n);
+              setCustomDistribution(Array(n * pduPerLineup).fill(0));
+            }}
+          />
+        </div>
+      </div>
 
-      <Card>
-        <CardContent className="grid gap-2 p-4">
-          <p>Total PDUs in use: <strong>{totalPDUs}</strong></p>
-          <p>Required Even Load per PDU: <strong>{evenLoadPerPDU.toFixed(2)} kW</strong></p>
-          <p>PDU Max Capacity (80% rule): <strong>{pduMaxKW.toFixed(2)} kW</strong></p>
-          <p>Total Available System Capacity: <strong>{(pduMaxKW * totalPDUs / 1000).toFixed(2)} MW</strong></p>
-        </CardContent>
-      </Card>
+      <div style={{ marginBottom: "1rem" }}>
+        <p>Total PDUs in use: <strong>{totalPDUs}</strong></p>
+        <p>Required Even Load per PDU: <strong>{evenLoadPerPDU.toFixed(2)} kW</strong></p>
+        <p>PDU Max Capacity (80% rule): <strong>{pduMaxKW.toFixed(2)} kW</strong></p>
+        <p>Total Available System Capacity: <strong>{(pduMaxKW * totalPDUs / 1000).toFixed(2)} MW</strong></p>
+      </div>
 
-      <Card>
-        <CardContent className="grid gap-4 p-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Custom Distribution</h2>
-            <div className="flex gap-4">
-              <Button onClick={autoDistribute} variant="outline">Auto Distribute</Button>
-              <Button onClick={exportCSV} variant="outline">Export CSV</Button>
-              <Button onClick={exportPDF} variant="outline">Export PDF</Button>
-            </div>
-          </div>
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+        <button onClick={autoDistribute}>Auto Distribute</button>
+        <button onClick={exportCSV}>Export CSV</button>
+        <button onClick={exportPDF}>Export PDF</button>
+      </div>
 
-          {Array.from({ length: activeLineups }).map((_, lineupIndex) => (
-            <div key={lineupIndex} className="border-t pt-2">
-              <h3 className="font-semibold mb-2">Lineup {lineupIndex + 1}</h3>
-              {Array.from({ length: pduPerLineup }).map((_, j) => {
-                const index = lineupIndex * pduPerLineup + j;
-                return (
-                  <div key={index} className="flex gap-4 items-center mb-2">
-                    <label className="w-32 font-medium">PDU {index + 1} Load (kW)</label>
-                    <Input
-                      type="number"
-                      value={customDistribution[index] || 0}
-                      onChange={(e) => handleCustomChange(index, e.target.value)}
-                    />
-                    <span className={overCapacityFlags[index] ? "text-red-600" : "text-green-600"}>
-                      {overCapacityFlags[index] ? "Overloaded" : "OK"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+      {Array.from({ length: activeLineups }).map((_, lineupIndex) => (
+        <div key={lineupIndex} style={{ borderTop: "1px solid #ccc", paddingTop: "1rem", marginBottom: "1rem" }}>
+          <h3 style={{ fontWeight: "bold" }}>Lineup {lineupIndex + 1}</h3>
+          {Array.from({ length: pduPerLineup }).map((_, j) => {
+            const index = lineupIndex * pduPerLineup + j;
+            return (
+              <div key={index} style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.5rem" }}>
+                <label style={{ width: "150px" }}>PDU {index + 1} Load (kW)</label>
+                <input
+                  type="number"
+                  value={customDistribution[index] || 0}
+                  onChange={(e) => handleCustomChange(index, e.target.value)}
+                />
+                <span style={{ color: overCapacityFlags[index] ? "red" : "green" }}>
+                  {overCapacityFlags[index] ? "Overloaded" : "OK"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
 
-          <p className="mt-4">Total Custom Load: <strong>{totalCustomKW.toFixed(2)} kW</strong></p>
-          <p className={totalCustomKW > targetLoadMW * 1000 ? "text-red-600" : "text-green-600"}>
-            {totalCustomKW > targetLoadMW * 1000 ? "Exceeds Target Load" : "Within Target Load"}
-          </p>
-        </CardContent>
-      </Card>
+      <p>Total Custom Load: <strong>{totalCustomKW.toFixed(2)} kW</strong></p>
+      <p style={{ color: totalCustomKW > targetLoadMW * 1000 ? "red" : "green" }}>
+        {totalCustomKW > targetLoadMW * 1000 ? "Exceeds Target Load" : "Within Target Load"}
+      </p>
     </div>
   );
 }
